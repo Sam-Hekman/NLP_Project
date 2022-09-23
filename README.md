@@ -1,3 +1,5 @@
 # NLP_Project
 
-NLP course project, Meghan Dowell and Sam Hekman
+NLP Fall 2022 course project\n
+
+Meghan Dowell and Sam Hekman
