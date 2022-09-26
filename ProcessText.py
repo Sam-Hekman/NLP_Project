@@ -143,7 +143,6 @@ def Lemmatization(getTraining: bool):
 # function that runs through downloading, splitting up, and cleaning the dataset
 # excludes stemming and lemmatization so these can be performed separately if needed
 def ProcessData():
-    ImportDataset()  # download json.gz files for dataset
 
     # Getting the data split into training and testing
     if os.path.exists(trainReviewsFile) and os.path.exists(testReviewsFile):
@@ -152,6 +151,7 @@ def ProcessData():
         reviewData = open(testReviewsFile)
         test = json.load(reviewData)
     else:  # if it isn't already done, split the data and create files for it
+        ImportDataset()  # download json.gz files for dataset
         train, test = ParseSplitDataset()
         CreateJsonFile(trainReviewsFile, train)
         CreateJsonFile(testReviewsFile, test)
