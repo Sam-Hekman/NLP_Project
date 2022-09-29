@@ -27,10 +27,10 @@ maxReviews = 5000  # maximum number of reviews to get from a category
 splitRandomSeed = 2
 
 # file locations
-reviewsFile = "datasetProcessing\\reviews.json"
-tokenizedCleanedFile = "datasetProcessing\\tokenizedCleaned.json"
-stemmedFile = "datasetProcessing\\stemmed.json"
-lemmatizedFile = "datasetProcessing\\lemmatized.json"
+reviewsFile = "datasetProcessing\\reviews.json.gz"
+tokenizedCleanedFile = "datasetProcessing\\tokenizedCleaned.json.gz"
+stemmedFile = "datasetProcessing\\stemmed.json.gz"
+lemmatizedFile = "datasetProcessing\\lemmatized.json.gz"
 
 
 # endregion
@@ -79,8 +79,9 @@ def GetDataset():
 def PerformStemming():
     # if we already have the file, load it as json and return
     if os.path.exists(stemmedFile):
-        reviewData = open(stemmedFile)
-        return json.load(reviewData)
+        with gzip.open(stemmedFile, 'r') as fin:
+            data = json.loads(fin.read().decode('utf-8'))
+        return data
 
     data = ProcessData()  # get the tokenized and cleaned reviews
     stemmer = PorterStemmer()  # create nltk stemmer
@@ -96,8 +97,9 @@ def PerformStemming():
 def PerformLemmatization():
     # if we already have the file, load it as json and return
     if os.path.exists(lemmatizedFile):
-        reviewData = open(lemmatizedFile)
-        return json.load(reviewData)
+        with gzip.open(lemmatizedFile, 'r') as fin:
+            data = json.loads(fin.read().decode('utf-8'))
+        return data
 
     data = ProcessData()  # get the tokenized and cleaned reviews
     lemmatizer = WordNetLemmatizer()  # create nltk lemmatizer
@@ -122,8 +124,8 @@ def ProcessData():
 
     # Getting the data cut down so full set isn't used
     if os.path.exists(reviewsFile):
-        reviewData = open(reviewsFile)
-        data = json.load(reviewData)
+        with gzip.open(reviewsFile, 'r') as fin:
+            data = json.loads(fin.read().decode('utf-8'))
     else:  # if it isn't already done, split the data and create files for it
         ImportDataset()  # download json.gz files for dataset
         data = GetDataset()
@@ -131,8 +133,8 @@ def ProcessData():
 
     # Getting the data with contractions expanded and text tokenized
     if os.path.exists(tokenizedCleanedFile):
-        reviewData = open(tokenizedCleanedFile)
-        data = json.load(reviewData)
+        with gzip.open(tokenizedCleanedFile, 'r') as fin:
+            data = json.loads(fin.read().decode('utf-8'))
     else:  # if not already done, run Normalize on the datasets
         data = Normalize(data)
         CreateJsonFile(tokenizedCleanedFile, data)
@@ -161,9 +163,13 @@ def CreateJsonFile(filePath: str, data):
         os.mkdir(directory)
 
     dataToJson = json.dumps(data)  # create json from data
-    jsonFile = open(filePath, "w")  # create file
-    jsonFile.write(dataToJson)  # write the json to the file
-    jsonFile.close()  # close the file
+    jsonBytes = dataToJson.encode('utf-8')
+    with gzip.open(filePath, 'w') as fout:  # 4. fewer bytes (i.e. gzip)
+        fout.write(jsonBytes)
+
+#jsonFile = open(filePath, "w")  # create file
+ #   jsonFile.write(dataToJson)  # write the json to the file
+  #  jsonFile.close()  # close the file
 
 
 # combine all data, then split into training and testing
