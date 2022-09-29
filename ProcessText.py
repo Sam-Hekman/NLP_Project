@@ -121,7 +121,6 @@ def PerformLemmatization():
 # function that runs through downloading, splitting up, and cleaning the dataset
 # excludes stemming and lemmatization so these can be performed separately if needed
 def ProcessData():
-
     # Getting the data cut down so full set isn't used
     if os.path.exists(reviewsFile):
         with gzip.open(reviewsFile, 'r') as fin:
@@ -166,10 +165,6 @@ def CreateJsonFile(filePath: str, data):
     jsonBytes = dataToJson.encode('utf-8')
     with gzip.open(filePath, 'w') as fout:  # 4. fewer bytes (i.e. gzip)
         fout.write(jsonBytes)
-
-#jsonFile = open(filePath, "w")  # create file
- #   jsonFile.write(dataToJson)  # write the json to the file
-  #  jsonFile.close()  # close the file
 
 
 # combine all data, then split into training and testing
