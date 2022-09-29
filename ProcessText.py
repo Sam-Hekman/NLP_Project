@@ -1,4 +1,3 @@
-# region imports
 import os
 import json
 import gzip
@@ -9,8 +8,7 @@ from nltk.stem import PorterStemmer
 from nltk.stem import WordNetLemmatizer
 from nltk import word_tokenize, pos_tag
 from nltk.corpus import wordnet
-
-# endregion
+from sklearn.model_selection import train_test_split
 
 # region variables
 categories = ["AMAZON_FASHION", "All_Beauty", "Appliances", "Arts_Crafts_and_Sewing", "Automotive", "Books",
@@ -25,16 +23,14 @@ categories = ["AMAZON_FASHION", "All_Beauty", "Appliances", "Arts_Crafts_and_Sew
               "Video_Games"]  # the categories in the Amazon review dataset
 trainPercent = .7  # percentage of data to use for training
 maxReviews = 5000  # maximum number of reviews to get from a category
+# Leave at none to use the global random state instance from numpy.random, use an integer for a reproducible output
+splitRandomSeed = 2
 
 # file locations
-trainReviewsFile = "datasetProcessing\\trainReviews.json"
-testReviewsFile = "datasetProcessing\\testReviews.json"
-trainTokenizedFile = "datasetProcessing\\trainTokenized.json"
-testTokenizedFile = "datasetProcessing\\testTokenized.json"
-trainStemmedFile = "datasetProcessing\\trainStemmed.json"
-testStemmedFile = "datasetProcessing\\testStemmed.json"
-trainLemmatizedFile = "datasetProcessing\\trainLemmatized.json"
-testLemmatizedFile = "datasetProcessing\\testLemmatized.json"
+reviewsFile = "datasetProcessing\\reviews.json"
+tokenizedCleanedFile = "datasetProcessing\\tokenizedCleaned.json"
+stemmedFile = "datasetProcessing\\stemmed.json"
+lemmatizedFile = "datasetProcessing\\lemmatized.json"
 
 
 # endregion
@@ -56,9 +52,8 @@ def ImportDataset():
 
 
 # go through each json.gz and get the needed info
-def ParseSplitDataset():
-    trainingData = {}
-    testData = {}
+def GetDataset():
+    dataset = {}
     for category in categories:
         reviews = []  # list of [reviewText, rating] lists for this category
         curReviews = 0  # counter to check we don't pass maxReviews
@@ -76,55 +71,35 @@ def ParseSplitDataset():
             if curReviews == maxReviews:  # stop going through the file if we reach max reviews
                 break
 
-        splitPoint = int(curReviews * trainPercent)  # get the index at 70% of the data
-        trainingData[category] = reviews[:splitPoint]  # training data should be first 70%
-        testData[category] = reviews[splitPoint:]  # testing data should be remainder
-
-    return trainingData, testData
+        dataset[category] = reviews
+    return dataset
 
 
-# performs stemming on the dataset
-def Stemming(getTraining: bool):
-    # determine the dataset to stem
-    if getTraining:
-        file = trainTokenizedFile
-    else:
-        file = testTokenizedFile
+# function to get the stemmed dataset
+def PerformStemming():
+    # if we already have the file, load it as json and return
+    if os.path.exists(stemmedFile):
+        reviewData = open(stemmedFile)
+        return json.load(reviewData)
 
-    # get the tokenized reviews if we haven't already
-    if getTraining and not os.path.exists(file):
-        data, testing = ProcessData()
-    elif not getTraining and not os.path.exists(file):
-        training, data = ProcessData()
-    else:  # if we have the tokenized text, open the file and load as a json
-        reviewData = open(file)
-        data = json.load(reviewData)
-
+    data = ProcessData()  # get the tokenized and cleaned reviews
     stemmer = PorterStemmer()  # create nltk stemmer
     for category in data:  # for each category in the dataset
         for review in data[category]:  # for each review in the category
             review[0] = [stemmer.stem(word) for word in review[0]]  # stem each word in the review text
 
+    CreateJsonFile(stemmedFile, data)  # create the file with stemmed data
     return data
 
 
-# performs lemmatization on the dataset
-def Lemmatization(getTraining: bool):
-    # determine the dataset to lemmatize
-    if getTraining:
-        file = trainLemmatizedFile
-    else:
-        file = testLemmatizedFile
+# function to get the lemmatized dataset
+def PerformLemmatization():
+    # if we already have the file, load it as json and return
+    if os.path.exists(lemmatizedFile):
+        reviewData = open(lemmatizedFile)
+        return json.load(reviewData)
 
-    # get the tokenized reviews if we haven't already
-    if getTraining and not os.path.exists(file):
-        data, testing = ProcessData()
-    elif not getTraining and not os.path.exists(file):
-        training, data = ProcessData()
-    else:  # if we have the tokenized text, open the file and load as a json
-        reviewData = open(file)
-        data = json.load(reviewData)
-
+    data = ProcessData()  # get the tokenized and cleaned reviews
     lemmatizer = WordNetLemmatizer()  # create nltk lemmatizer
     # create mapping of tags -> needed to give part of speech of the tokens to the lemmatizer
     tagMap = defaultdict(lambda: wordnet.NOUN)
@@ -137,6 +112,7 @@ def Lemmatization(getTraining: bool):
             # for each token and pos tag, lemmatize the token, giving the needed tag
             review[0] = [lemmatizer.lemmatize(word, tagMap[tag[0]]) for word, tag in pos_tag(review[0])]
 
+    CreateJsonFile(lemmatizedFile, data)
     return data
 
 
@@ -144,47 +120,35 @@ def Lemmatization(getTraining: bool):
 # excludes stemming and lemmatization so these can be performed separately if needed
 def ProcessData():
 
-    # Getting the data split into training and testing
-    if os.path.exists(trainReviewsFile) and os.path.exists(testReviewsFile):
-        reviewData = open(trainReviewsFile)
-        train = json.load(reviewData)
-        reviewData = open(testReviewsFile)
-        test = json.load(reviewData)
+    # Getting the data cut down so full set isn't used
+    if os.path.exists(reviewsFile):
+        reviewData = open(reviewsFile)
+        data = json.load(reviewData)
     else:  # if it isn't already done, split the data and create files for it
         ImportDataset()  # download json.gz files for dataset
-        train, test = ParseSplitDataset()
-        CreateJsonFile(trainReviewsFile, train)
-        CreateJsonFile(testReviewsFile, test)
+        data = GetDataset()
+        CreateJsonFile(reviewsFile, data)
 
     # Getting the data with contractions expanded and text tokenized
-    if os.path.exists(trainTokenizedFile) and os.path.exists(testTokenizedFile):
-        reviewData = open(trainTokenizedFile)
-        train = json.load(reviewData)
-        reviewData = open(testTokenizedFile)
-        test = json.load(reviewData)
+    if os.path.exists(tokenizedCleanedFile):
+        reviewData = open(tokenizedCleanedFile)
+        data = json.load(reviewData)
     else:  # if not already done, run Normalize on the datasets
-        train, test = Normalize(train, test)
-        CreateJsonFile(trainTokenizedFile, train)
-        CreateJsonFile(testTokenizedFile, test)
+        data = Normalize(data)
+        CreateJsonFile(tokenizedCleanedFile, data)
 
-    return train, test
+    return data
 
 
 # function to remove contractions and tokenize the reviews
-def Normalize(trainData, testData):
+def Normalize(data):
     # split up contractions and tokenize each review in the training data
-    for category in trainData:
-        for review in trainData[category]:
+    for category in data:
+        for review in data[category]:
             noContractions = contractions.fix(review[0])  # contractions.fix separates into 2 words: aren't -> are not
             review[0] = word_tokenize(noContractions)  # word_tokenize splits sentences into words and punctuation
 
-    # split up contractions and tokenize each review in the test data
-    for category in testData:
-        for review in testData[category]:
-            noContractions = contractions.fix(review[0])
-            review[0] = word_tokenize(noContractions)
-
-    return trainData, testData
+    return data
 
 
 # endregion
@@ -202,41 +166,40 @@ def CreateJsonFile(filePath: str, data):
     jsonFile.close()  # close the file
 
 
-# function to get the stemmed dataset
-# getTraining -> if true, will return training dataset, if false will return testing dataset
-def GetStemmedData(getTraining: bool):
-    # determine which file to use
-    if getTraining:
-        file = trainStemmedFile
+# combine all data, then split into training and testing
+# if stem is True, returns stemmed data, otherwise returns lemmatized
+# returns train data, test data
+def SplitData(stem: bool):
+    # choose which file for stemming or lemmatization
+    if stem:
+        data = PerformStemming()
     else:
-        file = testStemmedFile
+        data = PerformLemmatization()
 
-    # if we already have the file, load it as json
-    if os.path.exists(file):
-        reviewData = open(file)
-        data = json.load(reviewData)
-    else:  # if we don't have the file, perform stemming and create the file
-        data = Stemming(getTraining)
-        CreateJsonFile(file, data)
+    allData = sum(data.values(), [])  # combine all of the data
+    # split the data, giving the trainPercent and random seed
+    split = train_test_split(allData, train_size=trainPercent, random_state=splitRandomSeed)
 
-    return data
+    return split[0], split[1]  # return train data, test data
 
 
-# function to get the lemmatized dataset
-# getTraining -> if true, will return training dataset, if false will return testing dataset
-def GetLemmatizedData(getTraining: bool):
-    # determine which file to use
-    if getTraining:
-        file = trainLemmatizedFile
+# split data into training and testing while still in categories
+# if stem is True, returns stemmed data, otherwise returns lemmatized
+# returns train data, test data
+def SplitDataKeepCategories(stem: bool):
+    # choose which file for stemming or lemmatization
+    if stem:
+        data = PerformStemming()
     else:
-        file = testLemmatizedFile
+        data = PerformLemmatization()
 
-    # if we already have the file, load it as json
-    if os.path.exists(file):
-        reviewData = open(file)
-        data = json.load(reviewData)
-    else:  # if we don't have the file, perform lemmatization and create the file
-        data = Lemmatization(getTraining)
-        CreateJsonFile(file, data)
+    train = {}
+    test = {}
 
-    return data
+    for category in data:
+        # split the data, giving the trainPercent and random seed
+        split = train_test_split(data[category], train_size=trainPercent, random_state=splitRandomSeed)
+        train[category] = split[0]  # update training and testing dictionary for this category
+        test[category] = split[1]
+
+    return train, test
