@@ -18,8 +18,9 @@ class RNN:
             tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, return_sequences=True), ),
             tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32), ),
             tf.keras.layers.Dense(64, activation='relu'),
-            # tf.keras.layers.Dense(32, activation='relu'),
             tf.keras.layers.Dropout(0.5),
+            # tf.keras.layers.Dense(32, activation='relu'),
+            # tf.keras.layers.Dropout(0.5),
             tf.keras.layers.Dense(3)
         ])
         model.compile(loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),

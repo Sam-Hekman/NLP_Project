@@ -3,16 +3,16 @@ import tensorflow as tf
 print(tf.version.VERSION)
 
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score, precision_score, recall_score
+from sklearn.metrics import classification_report
 from tensorflow.keras.utils import to_categorical
 
-from utils import get_data_as_dataframe
-from RNNmodel import RNN
+from utils import get_data_as_dataframe, get_training_graph
+from RNN_model import RNN
 
 if __name__ == "__main__":
 
     # Declare variables for train-test
-    seed = 77
+    seed = 30
     test_size = 0.3
 
     # Buffer and batch sizes
@@ -20,10 +20,10 @@ if __name__ == "__main__":
     buffer_size = 10000
 
     # Size of encoder vocabulary and subsequent dimension of NN input
-    vocab_size = 5000
+    vocab_size = 6000
 
     # Hyperparameters for LSTM-RNN
-    epochs = 5
+    epochs = 2 # 30
     validation_steps = 50
     learning_rate = 1e-4
 
@@ -40,6 +40,7 @@ if __name__ == "__main__":
 
     # Encode labels to one hot, convert to tensors
     y_train = tf.convert_to_tensor(to_categorical(y_train))
+    y_test_for_pred = tf.convert_to_tensor(y_test)
     y_test = tf.convert_to_tensor(to_categorical(y_test))
 
     # Zip training text and labels to dataset object, shuffle buffer and get batch
@@ -63,5 +64,13 @@ if __name__ == "__main__":
 
     training_history = RNN_model.train(train_dataset, test_dataset, epochs, validation_steps)
 
-    #np.save('training_history.npy', training_history.history)
-    #RNN_model.model.save("Current_model")
+    y_pred = RNN_model.model.predict(X_test)
+    y_pred = np.argmax(y_pred, axis=1)
+
+    print(classification_report(y_test_for_pred, y_pred))
+
+    get_training_graph(training_history, "LSTM-RNN")
+
+
+    # np.save('training_history_final.npy', training_history.history)
+    # RNN_model.model.save("RNN_model_final")

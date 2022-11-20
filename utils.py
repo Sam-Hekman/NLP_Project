@@ -2,8 +2,7 @@ import os
 import gzip
 import json
 import re
-
-import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
 
 from ProcessText import ProcessData, PerformStemming, PerformLemmatization
@@ -85,3 +84,36 @@ def stringify_and_remove_specials(text):
                 else:
                     s += (" " + text[i])
     return s
+
+# graphs for training process
+def get_training_graph(history, model_name):
+    accuracy = history.history['accuracy']
+    loss = history.history['loss']
+    val_accuracy = history.history['val_accuracy']
+    val_loss = history.history['val_loss']
+
+    x = [item for item in range(len(accuracy)+1) if item != 0]
+
+    plt.rcParams.update({'font.size': 15})
+    plt.figure(figsize=(12, 8))
+    plt.plot(x, accuracy, 'b-*', label="Training Accuracy")
+    plt.plot(x, val_accuracy, 'r-*', label="Validation Accuracy")
+    plt.legend()
+    plt.title("{} Training Accuracy".format(model_name))
+    plt.xticks(rotation=45)
+    plt.xlabel("Training Epoch")
+    plt.ylabel("Percentage")
+    plt.grid(linestyle='dashed')
+    plt.show()
+
+    plt.rcParams.update({'font.size': 15})
+    plt.figure(figsize=(12, 8))
+    plt.plot(x, loss, 'g-*', label="Training loss")
+    plt.plot(x, val_loss, '-*', color='orange', label="Validation loss")
+    plt.legend()
+    plt.title("LSTM-RNN Training Loss")
+    plt.xticks(rotation=45)
+    plt.xlabel("Training Epochs")
+    plt.ylabel("Percentage")
+    plt.grid(linestyle='dashed')
+    plt.show()
