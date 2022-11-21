@@ -75,7 +75,7 @@ if __name__ == "__main__":
     # Build TCN model
     TCN_model = TCN_model(vocab_len, learning_rate, encoder)
 
-    training_history = RNN_model.train(train_dataset, test_dataset, epochs, validation_steps)
+    training_history = TCN_model.train(train_dataset, test_dataset, epochs, validation_steps)
 
     y_pred = TCN_model.model.predict(X_test)
     y_pred = np.argmax(y_pred, axis=1)
