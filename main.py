@@ -8,6 +8,7 @@ from tensorflow.keras.utils import to_categorical
 
 from utils import get_data_as_dataframe, get_training_graph
 from RNN_model import RNN
+from TCN_model import TCN_model
 
 if __name__ == "__main__":
 
@@ -71,6 +72,14 @@ if __name__ == "__main__":
 
     get_training_graph(training_history, "LSTM-RNN")
 
+    # Build TCN model
+    TCN_model = TCN_model(vocab_len, learning_rate, encoder)
 
-    # np.save('training_history_final.npy', training_history.history)
-    # RNN_model.model.save("RNN_model_final")
+    training_history = RNN_model.train(train_dataset, test_dataset, epochs, validation_steps)
+
+    y_pred = TCN_model.model.predict(X_test)
+    y_pred = np.argmax(y_pred, axis=1)
+
+    print(classification_report(y_test_for_pred, y_pred))
+
+    get_training_graph(training_history, "TCN")
